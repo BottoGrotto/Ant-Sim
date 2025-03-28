@@ -1,6 +1,7 @@
 import pygame, sys
 from ant import Ant
 from pygame import Vector2 as vec2
+from food import Food
 
 pygame.init()
 
@@ -12,9 +13,14 @@ class Game:
         self.grid = self.create_grid()
         self.ants = []
         self.surface = pygame.Surface(size, pygame.SRCALPHA)
-        self.markers = []
+        self.markers = {}
+        self.food_list = []
+        food_pos = vec2(20, 20)
+        for i in range (6):
+            for j in range(6):
+                self.food_list.append(Food(vec2(food_pos.x + i, food_pos.y + j), 1))
 
-        for i in range (10):
+        for i in range (1):
             self.ants.append(Ant(self.display, "blue", False, vec2(40, 40), 0))
 
 
@@ -47,25 +53,28 @@ class Game:
             pygame.draw.line(self.display, "white", (gap, 0), (gap, self.size[1]), 1)
             gap += 4
 
+    def check_children(self):
+        for marker in self.markers:
+            self.markers[marker].check_child()
 
     def degredate_markers(self):
         for marker in self.markers:
-            marker.degredate()
+            self.markers[marker].degredate()
 
     def remove_dead_markers(self):
         for marker in self.markers.copy():
-            if marker.strength <= 0.0:
+            if self.markers[marker].strength <= 0.0:
                 # print("removed")
-                self.markers.remove(marker)
+                del self.markers[marker]
 
     def draw_markers(self):
         for marker in self.markers:
-            marker.draw(self.surface)
+            self.markers[marker].draw(self.surface)
 
     def update_markers(self):
         self.degredate_markers()
         self.remove_dead_markers()
-        # print(len(self.markers))
+        self.check_children()
         self.draw_markers()
         # for idx, row in enumerate(self.grid):
         #     for jdx, col in enumerate(self.grid):
@@ -90,10 +99,7 @@ class Game:
                     if event.key == pygame.K_SPACE:
                         self.ants[0].is_wondering = not self.ants[0].is_wondering
                         self.ants[0].is_returning_home = not self.ants[0].is_returning_home
-                        self.ants[1].is_wondering = not self.ants[1].is_wondering
-                        self.ants[1].is_returning_home = not self.ants[1].is_returning_home
-                        self.ants[2].is_wondering = not self.ants[2].is_wondering
-                        self.ants[2].is_returning_home = not self.ants[2].is_returning_home
+
                         # if self.ants[0].is_returning_home:
                         #     self.ants[0].marker_search_cooldown.start()
                         # else:
@@ -106,23 +112,28 @@ class Game:
             # self.display.blit()
             self.update_markers()
             self.display.blit(self.surface, (0, 0))
+            
             for ant in self.ants:
+                if not ant.holding_food:
+                    food, has_food = ant.detect_food(self.food_list)
+                    if has_food:
+                        ant.holding_food = True
+                        ant.is_wondering = False
+                        ant.is_returning_home = True
+                        # self.food_list[food].amount -= 1
+                        # if self.food_list[food].amount <= 0:
+                        #     self.food_list.pop(food)
                 place, marker = ant.move(self.markers)
-                if place and marker not in self.markers:
-                    # print("adding new marker")
-                    self.markers.append(marker)
-                elif place:
-                    # print("swapping marker")
-                    # print(self.markers.index(marker))
-                    self.markers[self.markers.index(marker)] = marker
-                ant.draw(self.display)
-                
-                
-            # for ant in self.ants:
+                if place:
+                    self.markers.update({f"{marker.pos.x}{marker.pos.y}": marker})
 
-            # self.remove_dead_markers()
+                ant.draw(self.display)
+            for food in self.food_list:
+                food.draw(self.display)
+
+            pygame.draw.circle(self.display, (0, 0, 255), (40, 40), 20)
             pygame.display.update()
 
 
 if __name__ == "__main__":
-    Game((400, 400)).run()
+    Game((160, 160)).run()

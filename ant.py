@@ -13,13 +13,29 @@ class Ant:
         self.direction = direction
         self.is_wondering = True
         self.is_returning_home = False
+        self.is_following_food = False
         self.img = pygame.image.load("ant-16px.png")
         self.ant = AntSprite(self.img, self.pos, -self.direction)
         self.drop_marker_timer = Timer(random.randint(250, 400))
-        self.marker_search_cooldown = Timer(200)
+        self.marker_search_cooldown = Timer(600)
         self.marker_search_cooldown.start(loop=True)
         self.drop_marker_timer.start(loop=True)
-        self.grid_pos = vec2(int(self.pos.x / 4), int(self.pos.y / 4))
+        self.home_pos = vec2(int(self.pos.x / 4), int(self.pos.y / 4))
+
+        self.following_marker = None
+        self.last_marker = None
+
+    def detect_food(self, food_list):
+        for idx, food in enumerate(food_list):
+            if self.pos.distance_to(food.pos_corrected) <= 8:  # Adjust the distance threshold as needed
+                self.holding_food = True
+                self.is_wondering = False
+                self.is_returning_home = True
+                food.amount -= 1
+                if food.amount <= 0:
+                    food_list.remove(food)
+                return idx, True
+        return 0, False
 
 
     def move(self, markers):
@@ -56,7 +72,10 @@ class Ant:
                 temp_marker.pos = vec2(self.ant_i , self.ant_j)
                 temp_marker.color = temp_marker.marker_colors[0]
                 temp_marker.strength = 1
+                temp_marker.child = self.last_marker
                 place_marker = True
+                self.last_marker = temp_marker
+                self.following_marker = temp_marker
 
             if random.randint(0, 30) == 0:
                 self.direction += random.randint(10, 360) * random.randint(-1, 1)
@@ -64,61 +83,85 @@ class Ant:
                     self.direction = 360 - abs(self.direction)
                 self.ant.update_dir(270 - self.direction)
         
-        elif self.is_returning_home:
+        if self.is_returning_home:
+            if self.pos.distance_to(vec2(self.home_pos.x * 4 + 2, self.home_pos.y * 4 + 2)) - 20 <= 20:
+                self.is_returning_home = False
+                self.is_wondering = False
+                self.is_following_food = True
+                self.holding_food = False
+                self.drop_marker_timer.stop()
+                self.marker_search_cooldown.start()
+                self.following_marker = self.last_marker
+                self.direction = 360 - (vec2(self.last_marker.pos.x * 4 + 2, self.last_marker.pos.y * 4 + 2) - self.pos).angle_to(vec2(1, 0))
+                self.ant.update_dir(270 - self.direction)
+                # print("Returned home")
+                return place_marker, temp_marker
+            # pygame.draw.circle(self.screen, (0, 0, 255), vec2(self.home_pos.x * 4 + 2, self.home_pos.y * 4 + 2), 2)
+
             if self.marker_search_cooldown.has_expired():
-                nearest_marker = self.find_nearest_marker_nearby(markers, 0)
-                if nearest_marker:
-                    # print(nearest_marker)
-                    # print(self.grid_pos, nearest_marker.pos)
-                    direction_to_marker = (nearest_marker.pos - self.grid_pos).angle_to(vec2(0, 0))
-                    # print(direction_to_marker)
-                    self.direction = direction_to_marker
-                    self.ant.update_dir(270 - self.direction)
-                elif random.randint(0, 30) == 0:
-                    self.direction += random.randint(10, 360) * random.randint(-1, 1)
-                    if abs(self.direction) > 360:
-                        self.direction = 360 - abs(self.direction)
-                    self.ant.update_dir(270 - self.direction)
+                last_marker = self.following_marker
+                for i in range(-3, 4):
+                    for j in range(-3, 4):
+                        if (i, j) == (0, 0):
+                            continue
+                        if self.ant_i + i < 0 or self.ant_i + i >= self.screen.get_width() / 4 and self.ant_j + j < 0 or self.ant_j + j >= self.screen.get_height() / 4:
+                            continue
+                        marker = markers.get(f"{self.ant_i + i}{self.ant_j + j}")
+                        if marker:
+                            marker_pos = vec2(marker.pos.x * 4 + 2, marker.pos.y * 4 + 2)
+                            last_marker_pos = vec2(last_marker.pos.x * 4 + 2, last_marker.pos.y * 4 + 2)
+                            home_pos_corrected = vec2(self.home_pos.x * 4 + 2, self.home_pos.y * 4 + 2)
+                            if marker.type == 0 and (marker.strength < last_marker.strength) or (marker_pos.distance_to(home_pos_corrected) - 20 < last_marker_pos.distance_to(home_pos_corrected) - 20):
+                                self.following_marker = markers.get(f"{self.ant_i + i}{self.ant_j + j}")
+                                last_marker = marker
+                                print("New Path")
+                            # self.direction = (self.following_marker.pos - self.grid_pos).angle_to(vec2(1, 0))
+                            # self.ant.update_dir(270 - self.direction)
+                                break
+                        pygame.draw.circle(self.screen, (255, 0, 0), ((self.ant_i + i) * 4 + 2, (self.ant_j + j) * 4 + 2), 2)
+
+            marker_pos = vec2(self.following_marker.pos.x * 4 + 2, self.following_marker.pos.y * 4 + 2)
+            if self.pos.distance_to(marker_pos) < 10 if self.following_marker else False:
+                self.following_marker = self.following_marker.child
+                # print("switched")
+            
+            if self.following_marker:
+                # print(self.grid_pos.distance_to(self.last_marker.pos))
+                # print(self.pos.distance_to(vec2(self.following_marker.pos.x * 4 + 2, self.following_marker.pos.y * 4 + 2)))
+                pygame.draw.circle(self.screen, (255, 0, 0), marker_pos, 2)
+                self.direction = 360 - (marker_pos - self.pos).angle_to(vec2(1, 0))
+                # print(self.direction)
+                if abs(self.direction) > 360:
+                    self.direction = 360 - abs(self.direction)
+                # print(self.direction)
+            self.ant.update_dir(270 - self.direction)
 
             if self.drop_marker_timer.has_expired():
                 temp_marker.type = 1
-                temp_marker.pos = self.grid_pos
+                temp_marker.pos = vec2(self.ant_i , self.ant_j)
                 temp_marker.color = temp_marker.marker_colors[1]
                 temp_marker.strength = 1
+                temp_marker.child = self.last_marker
                 place_marker = True
+                self.last_marker = temp_marker
         
+        # if self.is_following_food:
+            
         # print(ant_i, ant_j)
         # print(-self.direction)
+        # print(vec2(1*math.cos(math.radians(self.direction)), 1*math.sin(math.radians(self.direction))))
         self.pos += vec2(1*math.cos(math.radians(self.direction)), 1*math.sin(math.radians(self.direction)))
         return place_marker, temp_marker
     
-    def find_nearest_marker_nearby(self, markers, type=0):
-        nearby = [vec2(0, 1), vec2(1, 0), vec2(0, -1), vec2(-1, 0), vec2(1, 1), vec2(-1, -1), vec2(1, -1), vec2(-1, 1), vec2(-1, 2), vec2(1, 2), vec2(2, 1), vec2(2, -1), vec2(-2, 1), vec2(-2, -1), vec2(1, -2), vec2(-1, -2), vec2(0, 2), vec2(2, 0), vec2(0, -2), vec2(-2, 0), vec2(2, 2), vec2(-2, -2), vec2(2, -2), vec2(-2, 2)]
-        # for i in nearby:
-        #     pygame.draw.circle(self.screen, (255, 0, 0), (self.ant_i * 4 + i.x * 4, self.ant_j * 4 + i.y * 4), 2)
-        self.grid_pos = vec2(self.ant_i, self.ant_j)
-
+    def find_nearest_marker(self, markers, type=0):
         nearest_marker = None
-        
+        max_strength = -1
         for marker in markers:
             if marker.type != type:
                 continue
-            if nearest_marker is None:
+            if marker.strength > max_strength:
+                max_strength = marker.strength
                 nearest_marker = marker
-            
-            # self.grid_pos.distance_to(marker.pos) < self.grid_pos.distance_to(nearest_marker.pos) or 
-
-            if marker.strength < nearest_marker.strength:
-                nearest_marker = marker
-            # for pos in nearby:
-            #     pos = vec2(pos.x + self.grid_pos.x, pos.y + self.grid_pos.y)
-            #     if pos.x > 0 and pos.y > 0 and pos.x < int(self.screen.get_width() / 4) and pos.y < int(self.screen.get_height() / 4):
-            #         if marker.pos == pos:
-                        
-        # print(nearest_marker.pos)    
-        if nearest_marker:
-            nearest_marker.color = (255, 255, 0)
-            nearest_marker.draw(self.screen)
         return nearest_marker
     
     def find_food(self):

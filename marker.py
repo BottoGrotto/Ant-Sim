@@ -5,6 +5,7 @@ class Marker:
     def __init__(self, pos=vec2(0, 0), color=(0,0,0), strength=0):
         self.child = None
         self.pos = pos
+        self.world_pos = vec2((pos.x * 4) + 2, (pos.y * 4) + 2)
         self.color = color
         self.strength = strength
         self.marker_colors = [(144, 19, 194), (5, 235, 55), (255, 108, 10)]

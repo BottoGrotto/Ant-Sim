@@ -1,4 +1,4 @@
-import pygame, sys
+import pygame, sys, random
 from ant import Ant
 from pygame import Vector2 as vec2
 from food import Food
@@ -15,13 +15,13 @@ class Game:
         self.surface = pygame.Surface(size, pygame.SRCALPHA)
         self.markers = {}
         self.food_list = []
-        food_pos = vec2(20, 20)
+        food_pos = vec2(70, 70)
         for i in range (6):
             for j in range(6):
-                self.food_list.append(Food(vec2(food_pos.x + i, food_pos.y + j), 1))
+                self.food_list.append(Food(vec2(food_pos.x + i, food_pos.y + j), 10))
 
-        for i in range (1):
-            self.ants.append(Ant(self.display, "blue", False, vec2(40, 40), 0))
+        for i in range (200):
+            self.ants.append(Ant(self.display, "blue", False, vec2(40, 40), random.randint(0, 360)))
 
 
     def create_grid(self):
@@ -69,7 +69,8 @@ class Game:
 
     def draw_markers(self):
         for marker in self.markers:
-            self.markers[marker].draw(self.surface)
+            if self.markers[marker].type == 1:
+                self.markers[marker].draw(self.surface)
 
     def update_markers(self):
         self.degredate_markers()
@@ -99,6 +100,7 @@ class Game:
                     if event.key == pygame.K_SPACE:
                         self.ants[0].is_wondering = not self.ants[0].is_wondering
                         self.ants[0].is_returning_home = not self.ants[0].is_returning_home
+                        self.ants[0].holding_food = not self.ants[0].holding_food
 
                         # if self.ants[0].is_returning_home:
                         #     self.ants[0].marker_search_cooldown.start()
@@ -119,13 +121,14 @@ class Game:
                     if has_food:
                         ant.holding_food = True
                         ant.is_wondering = False
+                        ant.is_following_food = False
                         ant.is_returning_home = True
-                        # self.food_list[food].amount -= 1
-                        # if self.food_list[food].amount <= 0:
-                        #     self.food_list.pop(food)
+                        self.food_list[food].amount -= 1
+                        if self.food_list[food].amount <= 0:
+                            self.food_list.pop(food)
                 place, marker = ant.move(self.markers)
                 if place:
-                    self.markers.update({f"{marker.pos.x}{marker.pos.y}": marker})
+                    self.markers.update({f"{int(marker.pos.x)};{int(marker.pos.y)}": marker})
 
                 ant.draw(self.display)
             for food in self.food_list:
@@ -136,4 +139,4 @@ class Game:
 
 
 if __name__ == "__main__":
-    Game((160, 160)).run()
+    Game((400, 400)).run()

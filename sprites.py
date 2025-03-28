@@ -13,10 +13,10 @@ class AntSprite(pygame.sprite.Sprite):
         self.rect.x = pos.x    # Set the initial x position
         self.rect.y = pos.y    # Set the initial y position
         self.angle = direction
-        self.update_dir(270 - direction)
+        self.update_dir(direction)
         
     def update_dir(self, direction):
-        self.image = pygame.transform.rotate(self.og_image, direction)
+        self.image = pygame.transform.rotate(self.og_image, 270 - direction)
         self.rect = self.image.get_rect(center=self.rect.center)
         # self.angle = direction
 

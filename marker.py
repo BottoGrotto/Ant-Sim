@@ -30,4 +30,6 @@ class Marker:
 
     def draw(self, surf):
         # color = pygame.Color()
-        pygame.draw.circle(surf, (self.color[0], self.color[1], self.color[2], self.strength * 255), (self.pos.x * 4 + 2, self.pos.y * 4 + 2), 2)
+        pygame.draw.circle(surf, (self.color[0], self.color[1], self.color[2], self.strength * 225), (self.pos.x * 4 + 2, self.pos.y * 4 + 2), 4)
+        # pygame.draw.circle(surf, (self.color[0], self.color[1], self.color[2], self.strength * 200), (self.pos.x * 4 + 2, self.pos.y * 4 + 2), 3)
+        # pygame.draw.circle(surf, (self.color[0], self.color[1], self.color[2], self.strength * 255), (self.pos.x * 4 + 2, self.pos.y * 4 + 2), 2)

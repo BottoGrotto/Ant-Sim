@@ -5,11 +5,15 @@ from timer import Timer
 from marker import Marker
 
 class Ant:
+    total_food_collected = 0
     def __init__(self, screen, color, holding_food, pos, direction):
         self.screen = screen
         self.color = color
         self.holding_food = holding_food
         self.pos = pos
+        self.ant_i = int(self.pos.x / 4)
+        self.ant_j = int(self.pos.y / 4)
+
         self.direction = direction
         self.is_wondering = True
         self.is_returning_home = False
@@ -25,6 +29,7 @@ class Ant:
 
         self.following_marker = None
         self.last_marker = None
+
 
     def drop_marker(self, type):
         temp_marker = Marker()
@@ -49,6 +54,8 @@ class Ant:
             self.is_following_food = True
             self.following_marker = self.last_marker
             # self.is_wondering = True
+            Ant.total_food_collected += 1
+            print(Ant.total_food_collected)
             return True
         if self.pos.distance_to(vec2(self.home_pos.x * 4 + 2, self.home_pos.y * 4 + 2)) <= 40:
             self.direction = 360 - (vec2(self.ant_i, self.ant_j) - self.home_pos).angle_to(vec2(1, 0))
@@ -218,24 +225,55 @@ class Ant:
         else:
             return self.nav_food()
         
-    def check_collision(self, collision_dict):
+    def check_collision(self, wall_dict):
         for i in range(-1, 2):
             for j in range(-1, 2):
                 if (i, j) == (0, 0):
                     continue
                 if self.ant_i + i < 0 or self.ant_i + i >= self.screen.get_width() / 4 and self.ant_j + j < 0 or self.ant_j + j >= self.screen.get_height() / 4:
                     continue
-                wall = collision_dict.get(f"{self.ant_i + i};{self.ant_j + j}")
+                wall = wall_dict.get(f"{self.ant_i + i};{self.ant_j + j}")
                 if wall:
-                    if abs((wall.world_pos - self.pos).angle_to(vec2(1, 0)) - self.direction) <= 5:
-                        temp_pos = self.pos + vec2(1*math.cos(math.radians(self.direction)), 1*math.sin(math.radians(self.direction)))
-                        if (temp_pos.x > wall.world_pos.x or temp_pos.x < wall.world_pos.x + wall.width) or (temp_pos.y > wall.world_pos.y or temp_pos.y < wall.world_pos.y + wall.height):
-                            self.direciton = 360 - self.direction
-                            self.ant.update_dir(self.direction)
-                            return True
+                    # if abs((wall.world_pos - self.pos).angle_to(vec2(1, 0)) - self.direction) <= 45:
+                    #     print(abs((wall.world_pos - self.pos).angle_to(vec2(1, 0))))
+
+                    temp_pos = self.pos + vec2(1*math.cos(math.radians(self.direction)), 1*math.sin(math.radians(self.direction)))
+                    # print(temp_pos, wall.world_pos)
+                    if (temp_pos.x >= wall.world_pos.x and temp_pos.x <= wall.world_pos.x + wall.width) and (temp_pos.y >= wall.world_pos.y and temp_pos.y <= wall.world_pos.y + wall.height):
+                        # print("Hit!")
+                        self.direction = self.direction + 180
+                        self.pos += vec2(4*math.cos(math.radians(self.direction)), 4*math.sin(math.radians(self.direction)))
+
+
+                        # x1 = self.pos.x
+                        # x2 = temp_pos.x
+                        # x3 = wall.world_pos.x
+                        # x4 = wall.world_pos.x
+
+                        # y1 = self.pos.y
+                        # y2 = temp_pos.y
+                        # y3 = wall.world_pos.y
+                        # y4 = wall.world_pos.y + wall.height
+                        # denom = ((y4-y3)*(x2-x1) - (x4-x3)*(y2-y1))
+                        # uA = 5
+                        # uB = 5
+                        # if denom != 0:
+                        #     uA = ((x4-x3)*(y1-y3) - (y4-y3)*(x1-x3)) / denom
+                        #     uB = ((x2-x1)*(y1-y3) - (y2-y1)*(x1-x3)) / denom
+                        # if (uA >= 0 and uA <= 1 and uB >= 0 and uB <= 1):
+                            
+                        #     intersectionX = x1 + (uA * (x2-x1))
+                        #     intersectionY = y1 + (uA * (y2-y1))
+                        #     pygame.draw.circle(self.screen, (0, 255, 255), self.pos, 5)
+                        # self.pos = 
+                        # self.pos = 
+                        self.ant.update_dir(self.direction)
+                        return True
         return False
+
+
     
-    def move(self, markers):
+    def move(self, markers, wall_dict):
         if self.pos.x > self.screen.get_width() or self.pos.y > self.screen.get_height() or self.pos.x < 0 or self.pos.y < 0:
             if self.pos.x > self.screen.get_width():
                 self.pos.x -= 2
@@ -252,22 +290,41 @@ class Ant:
 
             self.direction -= 90
             self.ant.update_dir(self.direction)
-
+      
         result = self.navigate(markers)
+        if self.check_collision(wall_dict) and not self.is_wondering:
+            self.is_wondering = True
+            if not self.is_returning_home:
+                self.is_returning_home = True
+            if not self.is_following_food:
+                self.is_following_food = True
+
         self.pos += vec2(1*math.cos(math.radians(self.direction)), 1*math.sin(math.radians(self.direction)))
         return result
 
-    def detect_food(self, food_list):
-        for idx, food in enumerate(food_list):
-            if self.pos.distance_to(food.pos_corrected) <= 8:  # Adjust the distance threshold as needed
-                self.holding_food = True
-                self.is_wondering = False
-                self.is_returning_home = True
-                # food.amount -= 1
-                # if food.amount <= 0:
-                #     food_list.remove(food)
-                return idx, True
-        return 0, False
+    def detect_food(self, food_dict):
+        for i in range (-2, 3):
+            for j in range(-2, 3):
+                if self.ant_i + i < 0 or self.ant_i + i >= self.screen.get_width() / 4 and self.ant_j + j < 0 or self.ant_j + j >= self.screen.get_height() / 4:
+                    continue
+                food = food_dict.get(f"{self.ant_i + i};{self.ant_j + j}")
+                # print(food)
+                if food:
+                    return f"{self.ant_i + i};{self.ant_j + j}", True
+        return "", False        
+        
+
+
+        # for idx, food in enumerate(food_list):
+        #     if self.pos.distance_to(food.pos_corrected) <= 6:  # Adjust the distance threshold as needed
+        #         self.holding_food = True
+        #         self.is_wondering = False
+        #         self.is_returning_home = True
+        #         # food.amount -= 1
+        #         # if food.amount <= 0:
+        #         #     food_list.remove(food)
+        #         return idx, True
+        # return 0, False
 
 
     def move_deprecated(self, markers):
@@ -402,6 +459,8 @@ class Ant:
 
     def draw(self, surf):
         self.ant.update_pos(self.pos)
+        if self.holding_food:
+            pygame.draw.circle(surf, (168, 99, 59), self.pos + vec2(5*math.cos(math.radians(self.direction)), 5*math.sin(math.radians(self.direction))), 3)
         surf.blit(self.ant.image, self.ant.rect)
         # print(self.pos, self.ant.rect)
 

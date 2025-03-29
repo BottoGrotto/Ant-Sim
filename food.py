@@ -7,9 +7,15 @@ class Food:
         self.pos_corrected = vec2(int(pos.x * 4 + 2), int(pos.y * 4 + 2))
         self.amount = amount
 
+    def __eq__(self, other):
+        if self.pos == other.pos:
+            return True
+        else:
+            return False
+
     def draw(self, surf):
         x = int(self.pos.x * 4) + 2
         y = int(self.pos.y * 4) + 2
         # print(x, y)
         # print(x * 4 + 2, y * 4 + 2)
-        pygame.draw.circle(surf, (168, 99, 59), (x, y), 2)
+        pygame.draw.circle(surf, (168, 99, 59), (x, y), 4)

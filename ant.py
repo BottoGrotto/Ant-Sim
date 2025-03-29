@@ -115,8 +115,8 @@ class Ant:
                 self.following_marker = temp
                 self.is_wondering = False
 
-            self.ant.update_dir(self.direction)
-            return self.drop_marker(0)
+                self.ant.update_dir(self.direction)
+                return self.drop_marker(0)
         
         self.ant.update_dir(self.direction)
         return self.drop_marker(0)
@@ -179,33 +179,7 @@ class Ant:
                 self.is_wondering = True
                 return self.drop_marker(0)
             self.following_marker = temp
-            #     if not temp:
 
-            #         temp = self.check_surrounding(1)
-            #         if not temp or temp == Marker(pos=vec2(self.ant_i, self.ant_j), strength=1):
-            #             self.is_wondering = True
-            #             self.is_returning_home = False
-            #             return self.drop_marker(0)
-            #     self.following_marker = temp
-            # else:
-            #     temp = self.check_surrounding(1)
-
-            #     if temp and temp != Marker(pos=vec2(self.ant_i, self.ant_j), strength=1):
-            #         self.following_marker = temp
-            
-
-        # else:
-
-        #     temp = self.check_surrounding(1)
-        #     if not temp or temp == Marker(pos=vec2(self.ant_i, self.ant_j), strength=1):
-        #         self.is_wondering = True
-        #         self.is_returning_home = False
-        #         return self.drop_marker(0)
-
-        #     self.following_marker = temp
-
-        # pygame.draw.circle(self.screen, (0, 255, 255), self.following_marker.world_pos, 2)
-        
         self.direction = 360 - (self.following_marker.world_pos - self.pos).angle_to(vec2(1, 0))
         self.ant.update_dir(self.direction)
         # self.following_marker = self.following_marker.child
@@ -303,8 +277,11 @@ class Ant:
         return result
 
     def detect_food(self, food_dict):
-        for i in range (-2, 3):
-            for j in range(-2, 3):
+        search_area = 2
+        if self.is_following_food:
+            search_area = 3
+        for i in range((search_area - 1) * -1, search_area):
+            for j in range((search_area - 1) * -1, search_area):
                 if self.ant_i + i < 0 or self.ant_i + i >= self.screen.get_width() / 4 and self.ant_j + j < 0 or self.ant_j + j >= self.screen.get_height() / 4:
                     continue
                 food = food_dict.get(f"{self.ant_i + i};{self.ant_j + j}")
@@ -462,5 +439,12 @@ class Ant:
         if self.holding_food:
             pygame.draw.circle(surf, (168, 99, 59), self.pos + vec2(5*math.cos(math.radians(self.direction)), 5*math.sin(math.radians(self.direction))), 3)
         surf.blit(self.ant.image, self.ant.rect)
+        if self.is_wondering:
+            pygame.draw.circle(surf, (255, 0, 38), self.pos, 2)
+        elif self.is_returning_home:
+            pygame.draw.circle(surf, (2, 2, 247), self.pos, 2)
+        else:
+            pygame.draw.circle(surf, (252, 244, 3), self.pos, 2)
+        
         # print(self.pos, self.ant.rect)
 

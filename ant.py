@@ -119,20 +119,18 @@ class Ant:
             if self.pos.distance_to(self.following_marker.world_pos) <= 5:
                 temp = self.following_marker.child
                 if not temp:
-                    # print("Nav Home marker")
                     temp = self.check_surrounding(0)
                     if not temp or temp == Marker(pos=vec2(self.ant_i, self.ant_j), strength=1):
                         self.is_wondering = True
                         self.is_returning_home = False
                         return self.drop_marker(1)
                 self.following_marker = temp
-            else:
+            elif random.randint(0, 10) == 0:
                 temp = self.check_surrounding(0)
                 # print(temp.pos, self.ant_i, self.ant_j)
                 if temp and temp != Marker(pos=vec2(self.ant_i, self.ant_j), strength=1):
                     self.following_marker = temp
                     # print("Following difference marker")
-
         else:
             # print("Nav Home no marker")
             temp = self.check_surrounding(0)
@@ -144,7 +142,7 @@ class Ant:
             #     self.is_wondering = True
             self.following_marker = temp
         # print(self.following_marker.pos)
-        pygame.draw.circle(self.screen, (0, 0, 255), self.following_marker.world_pos, 2)
+        # pygame.draw.circle(self.screen, (0, 0, 255), self.following_marker.world_pos, 2)
         
         self.direction = 360 - (self.following_marker.world_pos - self.pos).angle_to(vec2(1, 0))
         self.ant.update_dir(self.direction)
@@ -163,7 +161,7 @@ class Ant:
                         self.is_returning_home = False
                         return self.drop_marker(0)
                 self.following_marker = temp
-            else:
+            elif random.randint(0, 10) == 0:
                 temp = self.check_surrounding(1)
                 if temp and temp != Marker(pos=vec2(self.ant_i, self.ant_j), strength=1):
                     self.following_marker = temp
@@ -199,7 +197,7 @@ class Ant:
 
         #     self.following_marker = temp
 
-        pygame.draw.circle(self.screen, (0, 255, 255), self.following_marker.world_pos, 2)
+        # pygame.draw.circle(self.screen, (0, 255, 255), self.following_marker.world_pos, 2)
         
         self.direction = 360 - (self.following_marker.world_pos - self.pos).angle_to(vec2(1, 0))
         self.ant.update_dir(self.direction)
@@ -220,6 +218,23 @@ class Ant:
         else:
             return self.nav_food()
         
+    def check_collision(self, collision_dict):
+        for i in range(-1, 2):
+            for j in range(-1, 2):
+                if (i, j) == (0, 0):
+                    continue
+                if self.ant_i + i < 0 or self.ant_i + i >= self.screen.get_width() / 4 and self.ant_j + j < 0 or self.ant_j + j >= self.screen.get_height() / 4:
+                    continue
+                wall = collision_dict.get(f"{self.ant_i + i};{self.ant_j + j}")
+                if wall:
+                    if abs((wall.world_pos - self.pos).angle_to(vec2(1, 0)) - self.direction) <= 5:
+                        temp_pos = self.pos + vec2(1*math.cos(math.radians(self.direction)), 1*math.sin(math.radians(self.direction)))
+                        if (temp_pos.x > wall.world_pos.x or temp_pos.x < wall.world_pos.x + wall.width) or (temp_pos.y > wall.world_pos.y or temp_pos.y < wall.world_pos.y + wall.height):
+                            self.direciton = 360 - self.direction
+                            self.ant.update_dir(self.direction)
+                            return True
+        return False
+    
     def move(self, markers):
         if self.pos.x > self.screen.get_width() or self.pos.y > self.screen.get_height() or self.pos.x < 0 or self.pos.y < 0:
             if self.pos.x > self.screen.get_width():

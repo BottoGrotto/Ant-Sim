@@ -2,6 +2,7 @@ import pygame, sys, random
 from ant import Ant
 from pygame import Vector2 as vec2
 from food import Food
+from wall import Wall
 
 pygame.init()
 
@@ -14,13 +15,18 @@ class Game:
         self.ants = []
         self.surface = pygame.Surface(size, pygame.SRCALPHA)
         self.markers = {}
+        self.wall_dict = {}
         self.food_list = []
-        food_pos = vec2(70, 70)
+        food_pos = vec2(60, 60)
         for i in range (6):
             for j in range(6):
-                self.food_list.append(Food(vec2(food_pos.x + i, food_pos.y + j), 10))
+                self.food_list.append(Food(vec2(food_pos.x + i, food_pos.y + j), 1000))
 
-        for i in range (200):
+        for i in range (6):
+            for j in range(6):
+                self.food_list.append(Food(vec2(70 + i, 10 + j), 10))
+
+        for i in range (500):
             self.ants.append(Ant(self.display, "blue", False, vec2(40, 40), random.randint(0, 360)))
 
 
@@ -69,14 +75,14 @@ class Game:
 
     def draw_markers(self):
         for marker in self.markers:
-            if self.markers[marker].type == 1:
-                self.markers[marker].draw(self.surface)
+            # if self.markers[marker].type == 2:
+            self.markers[marker].draw(self.surface)
 
     def update_markers(self):
         self.degredate_markers()
         self.remove_dead_markers()
         self.check_children()
-        self.draw_markers()
+        # self.draw_markers()
         # for idx, row in enumerate(self.grid):
         #     for jdx, col in enumerate(self.grid):
         #         strength = self.grid[idx][jdx][0]
@@ -96,6 +102,16 @@ class Game:
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     sys.exit()
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    pos = pygame.mouse.get_pos()
+                    print(pos)
+                    self.wall_dict.update({f"{int(pos[0] / 4)};{int(pos[1] / 4)}": Wall(vec2(int(pos[0] / 4), int(pos[1] / 4)), (255, 0, 0))})
+                    # print(pos)
+                    # print(self.grid[int(pos[1] / 4)][int(pos[0] / 4)])
+                    # self.grid[int(pos[1] / 4)][int(pos[0] / 4)][0] = 1
+                    # self.grid[int(pos[1] / 4)][int(pos[0] / 4)][1] = 1
+                    # self.markers.update({f"{int(pos[1] / 4)};{int(pos[0] / 4)}": Marker(vec2(int(pos[1] / 4), int(pos[0] / 4)), (0, 0, 0), 1)})
+                    # self.markers.update({f"{int(pos[1] / 4)};{int(pos[0] / 4)}": Marker(vec2(int(pos[1] / 4), int(pos[0] / 4)), (0, 0, 0), 1)})
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_SPACE:
                         self.ants[0].is_wondering = not self.ants[0].is_wondering
@@ -129,8 +145,10 @@ class Game:
                 place, marker = ant.move(self.markers)
                 if place:
                     self.markers.update({f"{int(marker.pos.x)};{int(marker.pos.y)}": marker})
-
                 ant.draw(self.display)
+            for wall in self.wall_dict:
+                self.wall_dict[wall].draw(self.display)
+                
             for food in self.food_list:
                 food.draw(self.display)
 

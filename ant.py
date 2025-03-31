@@ -62,7 +62,7 @@ class Ant:
             self.following_marker = self.home_marker
         return False
     
-    def check_surrounding(self, m_type):
+    def check_surrounding(self, m_type, s_type = None):
         closest_marker = Marker(pos=vec2(self.ant_i, self.ant_j), strength=1)
         # print(self.markers)
         for i in range(-3, 4):
@@ -78,7 +78,7 @@ class Ant:
                     # print("marker found!")
                     home_pos = vec2(self.home_pos.x * 4, self.home_pos.y * 4)
                     if m_type == 0:
-                        if marker.type == m_type and (marker.world_pos.distance_to(home_pos) < closest_marker.world_pos.distance_to(home_pos) and marker.strength < closest_marker.strength):
+                        if marker.type == m_type and (closest_marker.type != s_type if s_type else 10) and (marker.world_pos.distance_to(home_pos) < closest_marker.world_pos.distance_to(home_pos) and marker.strength < closest_marker.strength):
                             closest_marker = marker
                     elif m_type == 1:
                         if marker.type == m_type and marker.strength < closest_marker.strength:
@@ -126,21 +126,21 @@ class Ant:
             if self.pos.distance_to(self.following_marker.world_pos) <= 5:
                 temp = self.following_marker.child
                 if not temp:
-                    temp = self.check_surrounding(0)
+                    temp = self.check_surrounding(0, 2)
                     if not temp or temp == Marker(pos=vec2(self.ant_i, self.ant_j), strength=1):
                         self.is_wondering = True
                         self.is_returning_home = False
                         return self.drop_marker(1)
                 self.following_marker = temp
             elif random.randint(0, 10) == 0:
-                temp = self.check_surrounding(0)
+                temp = self.check_surrounding(0, 2)
                 # print(temp.pos, self.ant_i, self.ant_j)
                 if temp and temp != Marker(pos=vec2(self.ant_i, self.ant_j), strength=1):
                     self.following_marker = temp
                     # print("Following difference marker")
         else:
             # print("Nav Home no marker")
-            temp = self.check_surrounding(0)
+            temp = self.check_surrounding(0, 2)
             if not temp or temp == Marker(pos=vec2(self.ant_i, self.ant_j), strength=1):
                 self.is_wondering = True
                 self.is_returning_home = False
@@ -162,28 +162,28 @@ class Ant:
             if self.pos.distance_to(self.following_marker.world_pos) <= 5:
                 temp = self.following_marker.child
                 if not temp:
-                    temp = self.check_surrounding(1)
-                    if not temp or temp == Marker(pos=vec2(self.ant_i, self.ant_j), strength=1):
-                        self.is_wondering = True
-                        self.is_returning_home = False
-                        return self.drop_marker(0)
+                    # temp = self.check_surrounding(1)
+                    # if not temp or temp == Marker(pos=vec2(self.ant_i, self.ant_j), strength=1):
+                    self.is_wondering = True
+                    self.is_returning_home = False
+                    return self.drop_marker(2)
                 self.following_marker = temp
-            elif random.randint(0, 10) == 0:
-                temp = self.check_surrounding(1)
-                if temp and temp != Marker(pos=vec2(self.ant_i, self.ant_j), strength=1):
-                    self.following_marker = temp
+            # elif random.randint(0, 10) == 0:
+            #     temp = self.check_surrounding(1)
+            #     if temp and temp != Marker(pos=vec2(self.ant_i, self.ant_j), strength=1):
+            #         self.following_marker = temp
             
         else:
-            temp = self.check_surrounding(1)
-            if not temp or temp == Marker(pos=vec2(self.ant_i, self.ant_j), strength=1):
-                self.is_wondering = True
-                return self.drop_marker(0)
-            self.following_marker = temp
+            # temp = self.check_surrounding(1)
+            # if not temp or temp == Marker(pos=vec2(self.ant_i, self.ant_j), strength=1):
+            self.is_wondering = True
+            return self.drop_marker(2)
+            # self.following_marker = temp
 
         self.direction = 360 - (self.following_marker.world_pos - self.pos).angle_to(vec2(1, 0))
         self.ant.update_dir(self.direction)
         # self.following_marker = self.following_marker.child
-        return self.drop_marker(0)
+        return self.drop_marker(2)
 
     def navigate(self, markers):
         self.markers = markers

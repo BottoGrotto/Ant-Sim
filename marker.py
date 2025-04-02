@@ -16,11 +16,18 @@ class Marker:
             if self.child.strength <= 0.01:
                 self.child = None
 
-    def degredate(self):
-        if self.strength >= 0.01:
-            self.strength -= 0.002
+    def degredate(self, deg_speed):
+        if self.strength >= 0.001:
+            self.strength -= deg_speed + (2 - self.type) * 0.001
         else:
             self.strength = 0.00
+
+    def degregation_speed(self, home_pos, screen_size):
+        if self.type == 0:
+            max_dist = home_pos.distance_to(vec2(screen_size[0], screen_size[1]))
+            dist = home_pos.distance_to(self.pos)
+            return dist / max_dist
+        return 0.0001
 
     def __eq__(self, value):
         if value.pos == self.pos:

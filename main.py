@@ -1,8 +1,9 @@
-import pygame, sys, random
+import pygame, sys, random, json
 from ant import Ant
 from pygame import Vector2 as vec2
 from food import Food
 from wall import Wall
+from spawn import Spawn
 
 pygame.init()
 
@@ -18,18 +19,28 @@ class Game:
         self.wall_dict = {}
         self.food_dict = {}
         food_pos = vec2(60, 60)
-        for i in range (6):
-            for j in range(6):
-                self.food_dict.update({f"{int(food_pos.x + i)};{int(food_pos.y + j)}": Food(vec2(food_pos.x + i, food_pos.y + j), 1000)})
+        # for i in range (6):
+        #     for j in range(6):
+        #         self.food_dict.update({f"{int(food_pos.x + i)};{int(food_pos.y + j)}": Food(vec2(food_pos.x + i, food_pos.y + j), 1000)})
 
         # for i in range (6):
         #     for j in range(6):
         #         self.food_list.append(Food(vec2(70 + i, 10 + j), 10))
+        self.spawn = Spawn()
 
-        for i in range (1000):
-            self.ants.append(Ant(self.display, "blue", False, vec2(40, 40), random.randint(0, 360)))
+        self.load_map()
+
+        # print(self.spawn.world_pos)
+        for i in range (10):
+            self.ants.append(Ant(self.display, "blue", False, self.spawn.world_pos.copy(), random.randint(0, 360)))
 
         self.draw_ants = 0
+        self.last_food_count = 0
+        self.pause = False
+        self.info = True
+        self.placing = True
+
+
 
     def create_grid(self):
         grid = list(range(int(self.size[1]/ 4)))
@@ -66,7 +77,9 @@ class Game:
 
     def degredate_markers(self):
         for marker in self.markers:
-            self.markers[marker].degredate()
+            # deg_speed = self.markers[marker].degregation_speed()
+            deg_speed = 0.0001
+            self.markers[marker].degredate(deg_speed)
 
     def remove_dead_markers(self):
         for marker in self.markers.copy():
@@ -80,9 +93,10 @@ class Game:
             self.markers[marker].draw(self.surface)
 
     def update_markers(self):
-        self.degredate_markers()
-        self.remove_dead_markers()
-        self.check_children()
+        if not self.pause:
+            self.degredate_markers()
+            self.remove_dead_markers()
+            self.check_children()
         if self.draw_ants == 1 or self.draw_ants == 2:
             self.draw_markers()
         else:
@@ -97,11 +111,25 @@ class Game:
         #             color = self.pharamon_colors[ptype - 1]
         #             # print(color, strength)
         #             pygame.draw.circle(self.display, (color[0], color[1], color[2], strength * 255), (idx * 4 + 2, jdx * 4 + 2), 2)
+    def load_map(self):
+        with open("map.json", "r") as f:
+            data = json.load(f)
+
+        for wall in data["walls"]:
+            wall_obj = Wall(vec2(wall["pos"]), wall["color"])
+            self.wall_dict.update({f"{int(wall_obj.pos.x)};{int(wall_obj.pos.y)}": wall_obj})
+
+        for food in data["food"]:
+            food_obj = Food(vec2(food['pos']), food["amount"])
+            self.food_dict.update({f"{int(food_obj.pos.x)};{int(food_obj.pos.y)}": food_obj})
+
+        self.spawn = Spawn(vec2(data["spawn"]["world_pos"]))
     
     def run(self):
         while True:
             self.display.fill((255, 255, 255))
             self.clock.tick(60)
+            pygame.display.set_caption('FPS: ' + str(int(self.clock.get_fps())) + " Ants: " + str(len(self.ants)))
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     pygame.quit()
@@ -116,35 +144,46 @@ class Game:
                     # self.markers.update({f"{int(pos[1] / 4)};{int(pos[0] / 4)}": Marker(vec2(int(pos[1] / 4), int(pos[0] / 4)), (0, 0, 0), 1)})
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_SPACE:
-                        self.ants[0].is_wondering = not self.ants[0].is_wondering
-                        self.ants[0].is_returning_home = not self.ants[0].is_returning_home
-                        self.ants[0].holding_food = not self.ants[0].holding_food
+                        self.pause = not self.pause
                     if event.key == pygame.K_o:
                         self.draw_ants += 1
                         if self.draw_ants >= 3:
                             self.draw_ants = 0
+                    if event.key == pygame.K_i:
+                        self.info = not self.info
+                    if event.key == pygame.K_d:
+                        self.placing = not self.placing
+                    
 
 
                         # if self.ants[0].is_returning_home:
                         #     self.ants[0].marker_search_cooldown.start()
                         # else:
                         #     self.ants[0].marker_search_cooldown.stop()
+            mouse_pos = pygame.mouse.get_pos()
             mouse_buttons = pygame.mouse.get_pressed()
+
+            mouse_grid_pos = vec2(int(mouse_pos[0] / 4), int(mouse_pos[1] / 4))
+
             if mouse_buttons[0]:
-                pos = pygame.mouse.get_pos()
-                # print(pos)
                 for i in range(-1, 2):
                     for j in range(-1, 2):
-                        self.wall_dict.update({f"{int(pos[0] / 4) + i};{int(pos[1] / 4) + j}": Wall(vec2(int(pos[0] / 4) + i, int(pos[1] / 4) + j), (255, 0, 0))})
+                        pos = vec2(int(mouse_grid_pos.x + i), int(mouse_grid_pos.y + j))
+
+                        if self.placing:
+                            self.wall_dict.update({f"{int(pos.x)};{int(pos.y)}": Wall(pos, (255, 0, 0))})
+                        elif self.wall_dict.get(f"{int(pos.x)};{int(pos.y)}"):
+                            del self.wall_dict[f"{int(pos.x)};{int(pos.y)}"]
 
             if mouse_buttons[2]:
-                mouse_pos = pygame.mouse.get_pos()
-                # print(pos)
                 for i in range(-1, 2):
                     for j in range(-1, 2):
-                        pos = vec2(int(mouse_pos[0] / 4) + i, int(mouse_pos[1] / 4) + j)
-                        # if Food(pos) not in self.food_list:
-                        self.food_dict.update({f"{int(pos.x)};{int(pos.y)}": Food(pos, 100)})
+                        pos = vec2(int(mouse_grid_pos.x + i), int(mouse_grid_pos.y + j))
+
+                        if self.placing:
+                            self.food_dict.update({f"{int(pos.x)};{int(pos.y)}": Food(pos, 20)})
+                        elif self.food_dict.get(f"{int(pos.x)};{int(pos.y)}"):
+                            del self.food_dict[f"{int(pos.x)};{int(pos.y)}"]
             # self.diminish_grid()
             # self.draw_grid()
             # self.draw_markers()
@@ -154,36 +193,44 @@ class Game:
             
             for wall in self.wall_dict:
                 self.wall_dict[wall].draw(self.display)
-
+            
             for ant in self.ants:
-                if not ant.holding_food:
-                    # print(self.food_dict)
-                    food, has_food = ant.detect_food(self.food_dict)
-                    if has_food:
-                        ant.holding_food = True
-                        ant.is_wondering = False
-                        ant.is_following_food = False
-                        ant.is_returning_home = True
-                        self.food_dict[food].amount -= 1
-                        if self.food_dict[food].amount <= 0:
-                            del self.food_dict[food]
-                place, marker = ant.move(self.markers, self.wall_dict)
-                if place:
-                    self.markers.update({f"{int(marker.pos.x)};{int(marker.pos.y)}": marker})
+                # if ant.death_timer.has_expired():
+                #     self.ants.remove(ant)
+                #     continue
+                if not self.pause:
+                    if not ant.holding_food:
+                        # print(self.food_dict)
+                        food, has_food = ant.detect_food(self.food_dict)
+                        if has_food:
+                            ant.holding_food = True
+                            ant.is_wondering = False
+                            ant.is_following_food = False
+                            ant.is_returning_home = True
+                            self.food_dict[food].amount -= 1
+                            if self.food_dict[food].amount <= 0:
+                                del self.food_dict[food]
+                    place, marker = ant.move(self.markers, self.wall_dict)
+                    if place:
+                        if not self.markers.get(f"{int(marker.pos.x)};{int(marker.pos.y)}") or marker.type != 0:
+                            self.markers.update({f"{int(marker.pos.x)};{int(marker.pos.y)}": marker})
+                
                 
                 if self.draw_ants == 0 or self.draw_ants == 2:
-                    ant.draw(self.display)
-            
-                
-
+                    ant.draw(self.display, self.info)
             
                 
             for food in self.food_dict:
                 self.food_dict[food].draw(self.display)
             
+            for i in range(0, Ant.total_food_collected - self.last_food_count):
+                if random.randint(0, 10) == 0:
+                    self.ants.append(Ant(self.display, "blue", False, self.spawn.world_pos.copy(), random.randint(0, 360)))
+            self.last_food_count = Ant.total_food_collected
             
             
-            pygame.draw.circle(self.display, (0, 0, 255), (40, 40), 20)
+            # pygame.draw.circle(self.display, (0, 0, 255), (40, 40), 20)
+            self.spawn.draw(self.display)
             pygame.display.update()
 
 

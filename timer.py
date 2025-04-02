@@ -12,6 +12,10 @@ class Timer:
         self.running = False
         self.loop = False
 
+    def restart(self):
+        self.stop()
+        self.start()
+
     def start(self, loop=False):
         """
         Start the timer.

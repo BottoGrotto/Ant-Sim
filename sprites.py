@@ -26,4 +26,26 @@ class AntSprite(pygame.sprite.Sprite):
         self.rect.x = pos.x - self.rect.width/2
         self.rect.y = pos.y - self.rect.height/2
         # self.angle = direction
+
+class ArrowSprite(pygame.sprite.Sprite):
+    def __init__(self, img, pos, direction):
+        super().__init__()
+        self.img_size = img.get_size()
+        self.image = pygame.transform.scale(img, (int(self.img_size[0]*1), int(self.img_size[1]*1)))
+        self.og_image = self.image.copy()
+        self.rect = self.image.get_rect()  # Get the sprite's rectangle
+
+        self.pos = pos
+        self.rect.x = pos.x    # Set the initial x position
+        self.rect.y = pos.y    # Set the initial y position
+        self.angle = direction
+        self.update_dir(direction)
+        
+    def update_dir(self, direction):
+        self.image = pygame.transform.rotate(self.og_image, 270 - direction)
+        self.rect = self.image.get_rect(center=self.rect.center)
+
+    def update_pos(self, pos):
+        self.rect.x = pos.x - self.rect.width/2
+        self.rect.y = pos.y - self.rect.height/2
         

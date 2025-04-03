@@ -22,6 +22,8 @@ class Ant:
         self.ant = AntSprite(self.img, self.pos, self.direction)
         self.drop_marker_timer = Timer(random.randint(250, 400))
         self.marker_search_cooldown = Timer(600)
+        self.join_cooldown = Timer(random.randint(400, 1000))
+        
         self.marker_search_cooldown.start(loop=True)
         self.drop_marker_timer.start(loop=True)
         self.home_pos = vec2(int(self.pos.x / 4), int(self.pos.y / 4))
@@ -33,20 +35,27 @@ class Ant:
         self.last_marker = None
 
 
-    def drop_marker(self, type):
+    def drop_marker(self, type, pos=None):
         temp_marker = Marker()
         place_marker = False
         if self.drop_marker_timer.has_expired():
             temp_marker.type = type
-            temp_marker.pos = vec2(self.ant_i , self.ant_j)
-            temp_marker.world_pos = vec2(self.ant_i * 4 + 2, self.ant_j * 4 + 2)
+            if pos:
+                temp_marker.pos = pos
+                temp_marker.world_pos = vec2(pos.x * 4 + 2, pos.y * 4 + 2)
+            else:
+                temp_marker.pos = vec2(self.ant_i , self.ant_j)
+                temp_marker.world_pos = vec2(self.ant_i * 4 + 2, self.ant_j * 4 + 2)
             temp_marker.color = temp_marker.marker_colors[type]
             temp_marker.strength = 1
             temp_marker.child = self.last_marker
+            # temp_marker.arrow.update_pos(temp_marker.world_pos)
+            # if self.last_marker:
+            #     temp_marker.arrow.update_dir((temp_marker.world_pos - self.last_marker.world_pos).angle_to(vec2(1, 0)))
             place_marker = True
             self.last_marker = temp_marker
-            if type == 0 and not self.is_following_food:
-                self.following_marker = temp_marker
+            # if type == 0 and not self.is_returning_home and not self.is_following_food:
+            #     self.following_marker = temp_marker
         return (place_marker, temp_marker)
     
     def check_if_home(self):
@@ -67,7 +76,7 @@ class Ant:
     def check_surrounding(self, m_type, s_type = None):
         closest_marker = Marker(pos=vec2(self.ant_i, self.ant_j), strength=1)
         # print(self.markers)
-        search_area = -4
+        search_area = -3
         # if self.is_following_food:
         #     search_area = -1
         # if self.is_returning_home:
@@ -90,17 +99,24 @@ class Ant:
                             if random.randint(0, 10) == 0:
                                 if marker.type == m_type and marker.strength < closest_marker.strength and marker.world_pos.distance_to(home_pos) < closest_marker.world_pos.distance_to(home_pos):
                                     closest_marker = marker
+                                    
                             elif marker.type == m_type and marker.strength < closest_marker.strength:
                                 closest_marker = marker
                         elif marker.type == m_type and marker.strength < closest_marker.strength:
                             closest_marker = marker
                     elif m_type == 1:
-                        if marker.type == m_type and marker.strength < closest_marker.strength:
+                        if random.randint(0, 10) == 0:
+                            food = self.find_food(self.food_dict)
+                            if food:
+                                if marker.type == m_type and marker.strength < closest_marker.strength and marker.pos_corrected.distance_to(food.pos_corrected) < closest_marker.world_pos.distance_to(food.world_pos):
+                                    closest_marker = marker
+                                    
+                        elif marker.type == m_type and marker.strength < closest_marker.strength:
                             closest_marker = marker
                         # pygame.draw.circle(self.screen, (255, 255, 0), vec2((self.ant_i + i) * 4 + 2, (self.ant_j + j) * 4 + 2), 2)
                         # print("Swapped closest!")
                 # else:
-                pygame.draw.circle(self.screen, (255, 0, 0), vec2((self.ant_i + i) * 4 + 2, (self.ant_j + j) * 4 + 2), 2)
+                # pygame.draw.circle(self.screen, (255, 0, 0), vec2((self.ant_i + i) * 4 + 2, (self.ant_j + j) * 4 + 2), 2)
         # if closest_marker == Marker(pos=vec2(self.ant_i, self.ant_j), strength=1):
         #     self.
         return closest_marker
@@ -131,7 +147,7 @@ class Ant:
 
                 self.ant.update_dir(self.direction)
                 return self.drop_marker(2)
-        if random.randint(0, 50) == 0:
+        if random.randint(0, 50) == 0 and self.join_cooldown.has_expired():
             temp = self.check_surrounding(1)
             temp2 = self.check_surrounding(2)
             if temp2 and temp2 != Marker(pos=vec2(self.ant_i, self.ant_j), strength=1):  
@@ -140,6 +156,7 @@ class Ant:
                     self.is_following_food = True
                     self.place_marker = False
                     self.following_marker = temp
+
                     self.ant.update_dir(self.direction)
                     return self.drop_marker(2)
 
@@ -193,33 +210,49 @@ class Ant:
 
     def nav_food(self):
         if self.following_marker:
-            if self.pos.distance_to(self.following_marker.world_pos) <= 5:
+            if self.pos.distance_to(self.following_marker.world_pos) <= 0.5:
                 temp = self.following_marker.child
                 if not temp:
+                    
+                    # print("No child")
                     # temp = self.check_surrounding(1)
                     # if not temp or temp == Marker(pos=vec2(self.ant_i, self.ant_j), strength=1):
                     self.is_wondering = True
+                    self.join_cooldown = Timer(random.randint(400, 1000))
+                    self.join_cooldown.start()
                     self.is_returning_home = False
                     self.ant.update_dir(self.direction)
                     return self.drop_marker(2)
                 self.following_marker = temp
-
+            elif random.randint(0, 20) == 0:
+                food = self.find_food(self.food_dict) 
+                if food:
+                    self.direction = 360 - (food.pos_corrected - self.pos).angle_to(vec2(1, 0))
+                    self.ant.update_dir(self.direction)
+                    return self.drop_marker(2)
             # elif random.randint(0, 40) == 0:
             #     temp = self.check_surrounding(1)
             #     if temp and temp != Marker(pos=vec2(self.ant_i, self.ant_j), strength=1):
             #         self.following_marker = temp
             
         else:
-            if random.randint(0, 20) == 0:
-                temp = self.check_surrounding(1)
-                if not temp or temp == Marker(pos=vec2(self.ant_i, self.ant_j), strength=1):
-                    self.is_wondering = True
-                    return self.drop_marker(2)  
-                self.following_marker = temp
-            else:
-                self.is_wondering = True
-            # self.following_marker = temp
-            return self.drop_marker(2)
+            food = self.find_food(self.food_dict)
+            if food:
+                self.direction = 360 - (food.pos_corrected - self.pos).angle_to(vec2(1, 0))
+                self.ant.update_dir(self.direction)
+                return self.drop_marker(2)
+            # if random.randint(0, 20) == 0:
+            #     temp = self.check_surrounding(1)
+            #     if not temp or temp == Marker(pos=vec2(self.ant_i, self.ant_j), strength=1):
+            #         self.is_wondering = True
+            #         self.join_cooldown = Timer(random.randint(400, 1000))
+            #         self.join_cooldown.start()
+            #         return self.drop_marker(2)  
+            #     self.following_marker = temp
+            # else:
+            self.is_wondering = True
+            # # self.following_marker = temp
+            # return self.drop_marker(2)
         self.direction = 360 - (self.following_marker.world_pos - self.pos).angle_to(vec2(1, 0))
         self.ant.update_dir(self.direction)
         # self.following_marker = self.following_marker.child
@@ -228,9 +261,10 @@ class Ant:
         else:
             return (False, Marker())
 
-    def navigate(self, markers, wall_dict):
+    def navigate(self, markers, wall_dict, food_dict):
         self.markers = markers
         self.wall_dict = wall_dict
+        self.food_dict = food_dict
         self.ant_i = int(self.pos.x / 4)
         self.ant_j = int(self.pos.y / 4)
 
@@ -270,7 +304,7 @@ class Ant:
 
 
     
-    def move(self, markers, wall_dict):
+    def move(self, markers, wall_dict, food_dict):
         if self.pos.x > self.screen.get_width() or self.pos.y > self.screen.get_height() or self.pos.x < 0 or self.pos.y < 0:
             if self.pos.x > self.screen.get_width():
                 self.pos.x -= 2
@@ -288,7 +322,7 @@ class Ant:
             self.direction -= 90
             self.ant.update_dir(self.direction)
       
-        result = self.navigate(markers, wall_dict)
+        result = self.navigate(markers, wall_dict, food_dict)
         
             # if not self.is_returning_home:
             #     self.is_returning_home = True
@@ -300,19 +334,33 @@ class Ant:
         self.pos += vec2(1*math.cos(math.radians(self.direction)), 1*math.sin(math.radians(self.direction)))
         
         return result
+    
+    def find_food(self, food_dict):
+        search_area = -3
+        # last_food = food_dict.get(f"{self.ant_i};{self.ant_j}")
+        for i in range(search_area, abs(search_area) + 1):
+            for j in range(search_area, abs(search_area) + 1):
+                if self.ant_i + i < 0 or self.ant_i + i >= self.screen.get_width() / 4 and self.ant_j + j < 0 or self.ant_j + j >= self.screen.get_height() / 4:
+                    continue
+                food = food_dict.get(f"{self.ant_i + i};{self.ant_j + j}")
+                if food:
+                    return food
+        return None
 
     def detect_food(self, food_dict):
-        search_area = 1
+        search_area = -1
         if self.is_following_food:
-            search_area = 4
-        for i in range((search_area - 1) * -1, search_area):
-            for j in range((search_area - 1) * -1, search_area):
+            search_area = -1
+        for i in range(search_area, abs(search_area) + 1):
+            for j in range(search_area, abs(search_area) + 1):
                 if self.ant_i + i < 0 or self.ant_i + i >= self.screen.get_width() / 4 and self.ant_j + j < 0 or self.ant_j + j >= self.screen.get_height() / 4:
                     continue
                 food = food_dict.get(f"{self.ant_i + i};{self.ant_j + j}")
                 # print(food)
                 if food:
                     self.place_marker = True
+                    self.drop_marker(1, pos=vec2(self.ant_i + i, self.ant_j + j))
+
                     return f"{self.ant_i + i};{self.ant_j + j}", True
         return "", False        
         
@@ -394,7 +442,7 @@ class Ant:
                             if marker.type == 0 and (marker.strength < last_marker.strength) or (marker_pos.distance_to(home_pos_corrected) - 20 < last_marker_pos.distance_to(home_pos_corrected) - 20):
                                 self.following_marker = markers.get(f"{self.ant_i + i}{self.ant_j + j}")
                                 last_marker = marker
-                                print("New Path")
+                                # print("New Path")
                             # self.direction = (self.following_marker.pos - self.grid_pos).angle_to(vec2(1, 0))
                             # self.ant.update_dir(270 - self.direction)
                                 break
@@ -444,8 +492,8 @@ class Ant:
                 nearest_marker = marker
         return nearest_marker
     
-    def find_food(self):
-        pass
+    # def find_food(self):
+    #     pass
 
 
     def draw(self, surf, info):

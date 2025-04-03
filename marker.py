@@ -1,5 +1,6 @@
 import pygame
 from pygame import Vector2 as vec2
+from sprites import ArrowSprite
 
 class Marker:
     def __init__(self, pos=vec2(0, 0), color=(0,0,0), strength=0):
@@ -10,6 +11,7 @@ class Marker:
         self.strength = strength
         self.marker_colors = [(144, 19, 194), (5, 235, 55), (255, 108, 10)]
         self.type = 0
+        self.arrow = ArrowSprite(pygame.image.load("arrow.png"), self.world_pos, 0)
     
     def check_child(self):
         if self.child:
@@ -37,6 +39,8 @@ class Marker:
 
     def draw(self, surf):
         # color = pygame.Color()
+
         pygame.draw.circle(surf, (self.color[0], self.color[1], self.color[2], self.strength * 225), (self.pos.x * 4 + 2, self.pos.y * 4 + 2), 4)
+        # surf.blit(self.arrow.image, self.arrow.rect)
         # pygame.draw.circle(surf, (self.color[0], self.color[1], self.color[2], self.strength * 200), (self.pos.x * 4 + 2, self.pos.y * 4 + 2), 3)
         # pygame.draw.circle(surf, (self.color[0], self.color[1], self.color[2], self.strength * 255), (self.pos.x * 4 + 2, self.pos.y * 4 + 2), 2)

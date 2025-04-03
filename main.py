@@ -31,7 +31,7 @@ class Game:
         self.load_map()
 
         # print(self.spawn.world_pos)
-        for i in range (10):
+        for i in range (800):
             self.ants.append(Ant(self.display, "blue", False, self.spawn.world_pos.copy(), random.randint(0, 360)))
 
         self.draw_ants = 0
@@ -210,9 +210,14 @@ class Game:
                             self.food_dict[food].amount -= 1
                             if self.food_dict[food].amount <= 0:
                                 del self.food_dict[food]
-                    place, marker = ant.move(self.markers, self.wall_dict)
+                    place, marker = ant.move(self.markers, self.wall_dict, self.food_dict)
                     if place:
-                        if not self.markers.get(f"{int(marker.pos.x)};{int(marker.pos.y)}") or marker.type != 0:
+                        place_over = False
+                        mk = self.markers.get(f"{int(marker.pos.x)};{int(marker.pos.y)}")
+                        if mk:
+                            if mk.strength < 0.25:
+                                place_over = True
+                        if not mk or marker.type != 0 or place_over:
                             self.markers.update({f"{int(marker.pos.x)};{int(marker.pos.y)}": marker})
                 
                 
@@ -227,8 +232,7 @@ class Game:
                 if random.randint(0, 10) == 0:
                     self.ants.append(Ant(self.display, "blue", False, self.spawn.world_pos.copy(), random.randint(0, 360)))
             self.last_food_count = Ant.total_food_collected
-            
-            
+                        
             # pygame.draw.circle(self.display, (0, 0, 255), (40, 40), 20)
             self.spawn.draw(self.display)
             pygame.display.update()
